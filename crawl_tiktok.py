@@ -171,7 +171,6 @@ class TikTokScraper:
     def quit(self):
         self.driver.quit()
 
-
 class GoogleSheetExporter:
     def __init__(self, credentials_file, spreadsheet_id, sheet_name):
         self.spreadsheet_id = spreadsheet_id
@@ -222,7 +221,6 @@ class GoogleSheetExporter:
         except HttpError as e:
             print(f"\nLỗi khi tương tác với Google Sheets API: {e}")
             print("Vui lòng kiểm tra lại: \n1. Spreadsheet ID có đúng không? \n2. Bạn đã chia sẻ Sheet cho email trong file credentials.json chưa (với quyền Editor)?")
-
 
 def main():
     SPREADSHEET_ID = '17cnmrpZLq5f5nAzg_L9zC6ivpaG2CohavSDwC-PBLX8' 
