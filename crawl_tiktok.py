@@ -1,14 +1,12 @@
+import os
 import time
 import re
-import os
 import pickle
+import csv
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from google.oauth2.service_account import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
 def load_cookies_from_file(filepath):
     try:
@@ -59,7 +57,9 @@ class TikTokScraper:
     @staticmethod
     def _parse_duration(duration_str):
         parts = duration_str.split(':')
-        return int(parts[-1]) + int(parts[-2]) * 60 if len(parts) == 2 else int(parts[-1])
+        if len(parts) == 2:
+            return int(parts[-1]) + int(parts[-2]) * 60
+        return int(parts[-1])
 
     @staticmethod
     def _convert_timestamp_to_date(timestamp):
@@ -89,7 +89,7 @@ class TikTokScraper:
         self.driver.get(channel_url)
         time.sleep(3)
 
-        # Extract profile stats: followers, hearts, total videos
+        # profile stats
         try:
             followers_text = self.driver.find_element(By.CSS_SELECTOR, '[data-e2e="followers-count"]').text.strip()
             follower_count = self._parse_number(followers_text)
@@ -106,7 +106,6 @@ class TikTokScraper:
         except:
             video_count = 0
 
-        # Scroll to load all videos
         self._scroll_page()
         elements = self.driver.find_elements(By.CSS_SELECTOR, '[data-e2e="user-post-item"]')
         video_data = []
@@ -146,11 +145,12 @@ class TikTokScraper:
             except:
                 return 0
 
-        data["author"] = self.driver.find_element(By.CSS_SELECTOR, '[data-e2e="browse-username"]').text.strip()
-        data["text"] = self.driver.find_element(By.CSS_SELECTOR, '[data-e2e="browse-video-desc"]').text.strip()
-        data["diggCount"] = get_count('[data-e2e="like-count"]')
-        data["shareCount"] = get_count('[data-e2e="share-count"]')
-        data["commentCount"] = get_count('[data-e2e="comment-count"]')
+        data["author"]  = self.driver.find_element(By.CSS_SELECTOR, '[data-e2e="browse-username"]').text.strip()
+        data["text"]    = self.driver.find_element(By.CSS_SELECTOR, '[data-e2e="browse-video-desc"]').text.strip()
+        data["diggCount"]   = get_count('[data-e2e="like-count"]')
+        data["shareCount"]  = get_count('[data-e2e="share-count"]')
+        data["commentCount"]= get_count('[data-e2e="comment-count"]')
+
         try:
             col = self.driver.find_elements(By.CSS_SELECTOR, '[data-e2e="undefined-count"]')
             data["collectCount"] = self._parse_number(col[0].text.strip()) if col else 0
@@ -158,15 +158,20 @@ class TikTokScraper:
             data["collectCount"] = 0
 
         try:
-            dur = self.driver.find_element(By.CSS_SELECTOR, '.css-1cuqcrm-DivSeekBarTimeContainer')\
-                          .text.split('/')[-1].strip()
+            dur = self.driver.find_element(
+                By.CSS_SELECTOR, 
+                '.css-1cuqcrm-DivSeekBarTimeContainer'
+            ).text.split('/')[-1].strip()
             data["duration"] = self._parse_duration(dur)
         except:
             data["duration"] = 0
 
-        ts_list = sorted(int(x) for x in re.findall(r'"createTime":\s*"(\d+)"', html_source) if int(x)!=0)
+        ts_list = sorted(
+            int(x) for x in re.findall(r'"createTime":\s*"(\d+)"', html_source)
+            if int(x) != 0
+        )
         data["Ngày tạo kênh"] = self._convert_timestamp_to_date(ts_list[0]) if ts_list else ""
-        data["Ngày đăng"] = self._convert_timestamp_to_date(ts_list[-1]) if ts_list else ""
+        data["Ngày đăng"]     = self._convert_timestamp_to_date(ts_list[-1]) if ts_list else ""
 
         data["hashtags"] = [
             a.text.strip('# ')
@@ -175,7 +180,7 @@ class TikTokScraper:
 
         m1 = re.search(r'"isAd":(true|false)', html_source)
         m2 = re.search(r'"isADVirtual":(true|false)', html_source)
-        data["isAd"] = m1.group(1) if m1 else ""
+        data["isAd"]        = m1.group(1) if m1 else ""
         data["isADVirtual"] = m2.group(1) if m2 else ""
 
         return data
@@ -205,74 +210,69 @@ class TikTokScraper:
     def quit(self):
         self.driver.quit()
 
-
-class GoogleSheetExporter:
-    def __init__(self, credentials_file, spreadsheet_id, sheet_name):
-        self.spreadsheet_id = spreadsheet_id
-        self.sheet_name = sheet_name
-        scopes = ['https://www.googleapis.com/auth/spreadsheets','https://www.googleapis.com/auth/drive']
-        creds = Credentials.from_service_account_file(credentials_file, scopes=scopes)
-        self.service = build('sheets', 'v4', credentials=creds)
+class CSVExporter:
+    def __init__(self, filename='tiktok_data.csv'):
+        self.filename = filename
 
     def export(self, data):
         if not data:
             print("Không có dữ liệu để xuất.")
             return
+
         header = [
             "Kênh","Author","Followers","Text","Likes","Shares","Comments","Collects",
             "Duration(s)","Ngày tạo kênh","Ngày đăng","Hashtags","URL Video","Views",
             "followerCount","heartCount","videoCount","isAd","isADVirtual"
         ]
-        values = [header]
-        for it in data:
-            values.append([
-                it.get("channel",""), it.get("author",""), it.get("followers",0), it.get("text",""),
-                it.get("diggCount",0), it.get("shareCount",0), it.get("commentCount",0),
-                it.get("collectCount",0), it.get("duration",0),
-                it.get("Ngày tạo kênh",""), it.get("Ngày đăng",""),
-                ', '.join(it.get("hashtags",[])), it.get("webVideoUrl",""),
-                it.get("playCount",0),
-                it.get("followerCount",0), it.get("heartCount",0), it.get("videoCount",0),
-                it.get("isAd",""), it.get("isADVirtual","")
-            ])
-        body = {"values": values}
         try:
-            self.service.spreadsheets().values().clear(
-                spreadsheetId=self.spreadsheet_id, range=self.sheet_name
-            ).execute()
-            self.service.spreadsheets().values().update(
-                spreadsheetId=self.spreadsheet_id, range=f"{self.sheet_name}!A1",
-                valueInputOption="RAW", body=body
-            ).execute()
-            print(f"Thành công! Dữ liệu đã được lưu vào Google Sheets: https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}")
-        except HttpError as e:
-            print(f"Lỗi khi tương tác với Google Sheets API: {e}")
+            with open(self.filename, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(header)
+                for it in data:
+                    writer.writerow([
+                        it.get("channel",""), it.get("author",""), it.get("followers",0), it.get("text",""),
+                        it.get("diggCount",0), it.get("shareCount",0), it.get("commentCount",0),
+                        it.get("collectCount",0), it.get("duration",0),
+                        it.get("Ngày tạo kênh",""), it.get("Ngày đăng",""),
+                        ', '.join(it.get("hashtags",[])), it.get("webVideoUrl",""),
+                        it.get("playCount",0),
+                        it.get("followers",0), it.get("heartCount",0), it.get("videoCount",0),
+                        it.get("isAd",""), it.get("isADVirtual","")
+                    ])
+            print(f"Thành công! Dữ liệu đã được lưu vào file CSV: {self.filename}")
+        except Exception as e:
+            print(f"Lỗi khi ghi file CSV: {e}")
 
 def main():
-    SPREADSHEET_ID = os.getenv('SPREADSHEET_ID','17cnmrpZLq5f5nAzg_L9zC6ivpaG2CohavSDwC-PBLX8')
-    SHEET_NAME = os.getenv('SHEET_NAME','testtt1')
-    CREDENTIALS_FILE = './credentials.json'
     COOKIE_FILE = 'tiktok_cookie.pkl'
+    DATA_DIR    = './data'
 
-    cookies = load_cookies_from_file(COOKIE_FILE)
-    if not cookies:
-        return
-    if not os.path.exists(CREDENTIALS_FILE):
-        print(f"Lỗi: Không tìm thấy file '{CREDENTIALS_FILE}'.")
-        return
+    # Tạo thư mục lưu trữ nếu chưa tồn tại
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
 
+    # Nhập và xử lý danh sách kênh
     channels_input = input("Nhập tên các kênh TikTok (cách nhau bởi dấu phẩy): ")
     if not channels_input:
         print("Không có kênh nào được nhập.")
         return
     channels = [c.strip() for c in channels_input.split(',')]
 
+    # Sinh tên file CSV: tiktok_<channel1>_<channel2>.csv trong ./data
+    safe_names   = [c.replace('@', '').replace(' ', '_') for c in channels]
+    csv_filename = os.path.join(DATA_DIR, f"tiktok_{'_'.join(safe_names)}.csv")
+
+    cookies = load_cookies_from_file(COOKIE_FILE)
+    if not cookies:
+        return
+
     scraper = TikTokScraper(cookies)
     try:
         scraper.set_cookies()
         scraped_data = scraper.scrape_channels(channels)
         if scraped_data:
-            GoogleSheetExporter(CREDENTIALS_FILE, SPREADSHEET_ID, SHEET_NAME).export(scraped_data)
+            print(f"Xuất dữ liệu ra file: {csv_filename}")
+            CSVExporter(csv_filename).export(scraped_data)
         else:
             print("Không thu thập được dữ liệu video nào.")
     except Exception as e:
