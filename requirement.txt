@@ -1,8 +1,8 @@
-# Web Scraping & Automation
-selenium==4.22.0
-python-dotenv==1.0.1
-
-# Google Sheets API Integration
-google-api-python-client==2.136.0
-google-auth-httplib2==0.2.0
-google-auth-oauthlib==1.2.0
+selenium==4.10.0
+webdriver-manager==3.8.3
+google-api-python-client==2.64.0
+google-auth==2.22.0
+google-auth-oauthlib==1.0.0
+google-auth-httplib2==0.1.0
+pandas==2.0.3
+python-dotenv==0.21.0
