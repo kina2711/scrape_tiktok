@@ -1,8 +1,14 @@
 selenium==4.10.0
-webdriver-manager==3.8.3
-google-api-python-client==2.64.0
-google-auth==2.22.0
-google-auth-oauthlib==1.0.0
+pandas==2.0.2
+google-auth==2.16.0
+google-auth-oauthlib==0.6.0
 google-auth-httplib2==0.1.0
-pandas==2.0.3
-python-dotenv==0.21.0
+google-api-python-client==2.95.0
+tkinter==8.6.12  # For Tkinter GUI for file dialogs (should already be included with Python, but included here for safety)
+python-dotenv==1.0.0  # To manage environment variables
+requests==2.28.2  # If you need any HTTP requests handling
+chromedriver-autoinstaller==0.4.0  # Automatically install ChromeDriver for Selenium
+numpy==1.23.4  # Optional, if you are performing any numerical operations on the data
+
+# For handling pickle and datetime
+pickle-mixin==1.0.2  # For compatibility with pickle (if necessary)
