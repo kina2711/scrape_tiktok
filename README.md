@@ -113,10 +113,10 @@ View comprehensive TikTok channel performance analytics:
 
 **Key Metrics Tracked:**
 - **📊 Total Views**: 44,507,044+ across all monitored channels
-- **👥 Total Followers**: 27,397+ combined follower base
+- **👥 Total Shares**: 27,397+ shares accumulated from all channels
 - **📺 Video Count**: 181 videos analyzed
-- **📥 Downloads**: 8,332 data points collected
-- **💬 Engagement**: 108,478 total interactions
+- **💬 Comments**: 8,332 engagements from users
+- **❤️ Likes**: 108,478 hearts from users
 
 ### 📋 Dashboard Sections
 
